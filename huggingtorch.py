@@ -51,7 +51,7 @@ def assign_new_embeddings(mod_module, new_embeddings) -> None:
     mod_module.resize_token_embeddings(size)
     curr_emb = mod_module.get_input_embeddings()
     curr_emb.weight.data = new_embeddings.data
-    mod_module.set_output_embeddings(curr_emb)
+    mod_module.set_input_embeddings(curr_emb)
 
 
 def enc_dec(mod_module, tok_module, input_str, encode_map: Dict[int, int] | None = None, decode_map: Dict[int,int] | None = None) -> None:
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     ### CARVING ###
     encode_map, decode_map = select_vocab(tok_module=tokenizer)
     new_emb = carve_embedding_vector(model, encode_map)
-    #assign_new_embeddings(model, new_emb)
+    assign_new_embeddings(model, new_emb)
     ### CARVING ###
-    #enc_dec(model, tokenizer, inputtxt, encode_map, decode_map)
+    enc_dec(model, tokenizer, inputtxt, encode_map, decode_map)
 
