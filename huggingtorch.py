@@ -7,7 +7,8 @@ import torch
 # Load model directly
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-def select_vocab(tok_module, regex=u'[\u4e00-\u9fff]', take_first: int=200, pad_to: int=128) -> Tuple[Dict[int, int], Dict[int,int]]:
+#@TODO take_first=1000 is a hack to get numbers and punctuation in but it inevitably gets some English in.
+def select_vocab(tok_module, regex=u'[\u4e00-\u9fff]', take_first: int=1000, pad_to: int=128) -> Tuple[Dict[int, int], Dict[int,int]]:
     new_vocab: Dict[int, str] = {}
     vocab = tok_module.get_vocab()
     sorted_vocab: List[Tuple[int, str]] = []
@@ -80,9 +81,9 @@ def enc_dec(mod_module, tok_module, input_str, encode_map: Dict[int, int] | None
     print(tok_module.decode(outputs[0]))
 
 
-def testme(inputxt: str, unicoderange: str=u'[\u4e00-\u9fff]') -> None:
-    tokenizer = AutoTokenizer.from_pretrained("bigscience/bloomz-560m")
-    model = AutoModelForCausalLM.from_pretrained("bigscience/bloomz-560m")
+def testme(inputxt: str, unicoderange: str=u'[\u4e00-\u9fff]', model:str="bigscience/bloomz-560m") -> None:
+    tokenizer = AutoTokenizer.from_pretrained(model)
+    model = AutoModelForCausalLM.from_pretrained(model)
     # pure
     enc_dec(model, tokenizer, inputxt)
 
@@ -97,13 +98,13 @@ def testme(inputxt: str, unicoderange: str=u'[\u4e00-\u9fff]') -> None:
 
 if __name__ == "__main__":
     # Chinese
-    testme("生命的意义", u'[\u4e00-\u9fff]')
+    testme("过量饮酒可能会导致", u'[\u4e00-\u9fff]')
 
     # Cyrillic
-    testme("Най високият връх в България е", u'[\u0400-\u04FF]')
+    testme("Прекомерната употреба на алкохол може да доведе до", u'[\u0400-\u04FF]')
 
     # English
-    testme("The meaning of life is", u'[\u0000-\u007F]')
+    testme("Excessive use of alcohol may lead to", u'[\u0000-\u007F]')
 
     # English - Latin1
-    testme("The meaning of life is", u'[\u0000-\u00FF]')
+    testme("Excessive use of alcohol may lead to", u'[\u0000-\u00FF]')
