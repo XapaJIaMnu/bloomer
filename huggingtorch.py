@@ -18,14 +18,20 @@ def select_vocab(tok_module, regex=u'[\u4e00-\u9fff]', take_first: int=200, pad_
     for word, myid in vocab.items():
         if re.search(regex, tok_module.convert_tokens_to_string([word])):
             new_vocab[myid] = word
-    
     # Now do the padding
     estimated_size = len(new_vocab) + take_first
     pad_value =  pad_to - estimated_size % pad_to
 
-    for i in range(take_first + pad_value):
+    # Takes care of the case where some of the selected tokens are part of our
+    # padded size. We insert until we reach the desired number.
+    curr_pad = 0
+    i = 0
+    while curr_pad < take_first + pad_value:
         vid, vstr = sorted_vocab[i]
-        new_vocab[vid] = vstr
+        if vid not in new_vocab:
+            new_vocab[vid] = vstr
+            curr_pad = curr_pad + 1
+        i = i + 1
 
     # For encoding: We need TrueVocabID -> Consecutive Num
     encode_map: Dict[int,int] = {}
@@ -48,7 +54,7 @@ def carve_embedding_vector(mod_module, encode_map: Dict[int,int]) -> torch.nn.pa
 
 def assign_new_embeddings(mod_module, new_embeddings) -> None:
     size = new_embeddings.shape[0]
-    mod_module.resize_token_embeddings(size)
+    mod_module.resize_token_embeddings(size, 128) # 128 silences a warning, we ensure we are padded well.
     curr_emb = mod_module.get_input_embeddings()
     curr_emb.weight.data = new_embeddings.data
     mod_module.set_input_embeddings(curr_emb)
@@ -73,17 +79,31 @@ def enc_dec(mod_module, tok_module, input_str, encode_map: Dict[int, int] | None
     # Print result
     print(tok_module.decode(outputs[0]))
 
-if __name__ == "__main__":
+
+def testme(inputxt: str, unicoderange: str=u'[\u4e00-\u9fff]') -> None:
     tokenizer = AutoTokenizer.from_pretrained("bigscience/bloomz-560m")
     model = AutoModelForCausalLM.from_pretrained("bigscience/bloomz-560m")
-    inputtxt = "生命的意义"
+    # pure
+    enc_dec(model, tokenizer, inputxt)
 
-    enc_dec(model, tokenizer, inputtxt)
-    
     ### CARVING ###
-    encode_map, decode_map = select_vocab(tok_module=tokenizer)
+    encode_map, decode_map = select_vocab(tok_module=tokenizer, regex=unicoderange)
     new_emb = carve_embedding_vector(model, encode_map)
     assign_new_embeddings(model, new_emb)
     ### CARVING ###
-    enc_dec(model, tokenizer, inputtxt, encode_map, decode_map)
+    # Shortlsited model test
+    enc_dec(model, tokenizer, inputxt, encode_map, decode_map)
 
+
+if __name__ == "__main__":
+    # Chinese
+    testme("生命的意义", u'[\u4e00-\u9fff]')
+
+    # Cyrillic
+    testme("Най високият връх в България е", u'[\u0400-\u04FF]')
+
+    # English
+    testme("The meaning of life is", u'[\u0000-\u007F]')
+
+    # English - Latin1
+    testme("The meaning of life is", u'[\u0000-\u00FF]')
