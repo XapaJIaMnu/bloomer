@@ -98,9 +98,9 @@ def testme(inputxt: str,
            ) -> None:
 
     if lora_weights:
-        print("Inference with an LLM only.")
-    else:
         print("Inference with an LLM and a LoRA module.")
+    else:
+        print("Inference with an LLM only.")
     print("Loading base LLM {}".format(model))
     tokenizer = AutoTokenizer.from_pretrained(model)
     model = AutoModelForCausalLM.from_pretrained(model, device_map=device_map)
